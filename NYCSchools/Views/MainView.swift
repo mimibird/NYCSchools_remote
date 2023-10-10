@@ -14,9 +14,11 @@ struct MainView: View {
     var body: some View {
         NavigationView {
             List(networkManager.schools) { school in
-                
+                NavigationLink(destination: DetailView(school: school)) {
+                    
                         Text(school.school_name)
-                       
+
+                }
             }
             .navigationTitle("NYC Schools")
         }
