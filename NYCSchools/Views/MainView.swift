@@ -8,14 +8,21 @@
 import SwiftUI
 
 struct MainView: View {
+    
+    @ObservedObject var networkManager = NetworkManager()
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundColor(.accentColor)
-            Text("Hello, world!")
+        NavigationView {
+            List(networkManager.schools) { school in
+                
+                        Text(school.school_name)
+                       
+            }
+            .navigationTitle("NYC Schools")
         }
-        .padding()
+        .onAppear {
+            self.networkManager.fetchData()
+        }
     }
 }
 
