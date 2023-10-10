@@ -16,7 +16,7 @@ struct MainView: View {
             List(networkManager.schools) { school in
                 NavigationLink(destination: DetailView(school: school)) {
                     
-                        Text(school.school_name)
+                    Text(school.schoolName)
 
                 }
             }
