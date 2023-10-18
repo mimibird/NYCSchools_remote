@@ -11,41 +11,52 @@ import Foundation
 
 class NetworkManager: ObservableObject {
     @Published var schools = [CombinedSchool]()
-
-    let url1 = URL(string: "https://data.cityofnewyork.us/resource/s3k6-pzi2.json")!
-    let url2 = URL(string: "https://data.cityofnewyork.us/resource/f9bf-2cp4.json")!
-
+    
+    let getNycSchoolsUrl = URL(string: "https://data.cityofnewyork.us/resource/s3k6-pzi2.json")!
+    let getSatScoresUrl = URL(string: "https://data.cityofnewyork.us/resource/f9bf-2cp4.json")!
+    
     func fetchData() {
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-
-        URLSession.shared.dataTask(with: url1) { data1, _, _ in
-            guard let data1 = data1, let schools1 = try? decoder.decode([CombinedSchool].self, from: data1) else {
-                print("Error decoding data from URL1")
-                return
-            }
-
-            URLSession.shared.dataTask(with: self.url2) { data2, _, _ in
-                guard let data2 = data2, let schools2 = try? decoder.decode([CombinedSchool].self, from: data2) else {
-                    print("Error decoding data from URL2")
-                    return
-                }
-
-                let combined = schools1.map { school1 -> CombinedSchool in
-                    if let matchedSchool2 = schools2.first(where: { $0.dbn == school1.dbn }) {
-                        return CombinedSchool(dbn: school1.dbn,
-                                              schoolName: school1.schoolName,
-                                              satMathAvgScore: matchedSchool2.satMathAvgScore,
-                                              satCriticalReadingAvgScore: matchedSchool2.satCriticalReadingAvgScore,
-                                              satWritingAvgScore: matchedSchool2.satWritingAvgScore)
-                    }
-                    return school1
-                }
-
+        fetchNYCSchools { nycSchoolsList in
+            self.fetchSATScores { satScoresList in
+                let combined = self.combineData(nycSchools: nycSchoolsList, satScores: satScoresList)
                 DispatchQueue.main.async {
                     self.schools = combined
                 }
-            }.resume()
+            }
+        }
+    }
+    
+    private func fetchNYCSchools(completion: @escaping ([CombinedSchool]) -> Void) {
+        fetch(from: getNycSchoolsUrl, completion: completion)
+    }
+    
+    private func fetchSATScores(completion: @escaping ([CombinedSchool]) -> Void) {
+        fetch(from: getSatScoresUrl, completion: completion)
+    }
+    
+    private func fetch(from url: URL, completion: @escaping ([CombinedSchool]) -> Void) {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            guard let data = data, let schools = try? decoder.decode([CombinedSchool].self, from: data) else {
+                print("Error decoding data from \(url)")
+                return
+            }
+            completion(schools)
         }.resume()
+    }
+    
+    private func combineData(nycSchools: [CombinedSchool], satScores: [CombinedSchool]) -> [CombinedSchool] {
+        return nycSchools.map { nycSchool -> CombinedSchool in
+            if let matchedSatScore = satScores.first(where: { $0.dbn == nycSchool.dbn }) {
+                return CombinedSchool(dbn: nycSchool.dbn,
+                                      schoolName: nycSchool.schoolName,
+                                      satMathAvgScore: matchedSatScore.satMathAvgScore,
+                                      satCriticalReadingAvgScore: matchedSatScore.satCriticalReadingAvgScore,
+                                      satWritingAvgScore: matchedSatScore.satWritingAvgScore)
+            }
+            return nycSchool
+        }
     }
 }
